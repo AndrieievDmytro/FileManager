@@ -17,4 +17,5 @@ type FolderTree struct {
 	Name      string       `json:"Path"`
 	File      string       `json:"File"`
 	Folders   []FolderTree `json:",omitempty"`
+	// Wg        sync.WaitGroup `json:"-"`
 }

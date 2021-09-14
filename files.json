@@ -1,10 +1,1 @@
-[
-    {
-        "Path": "D://ProjectFolder/Go/src/blackHatGo/newDir2/folder1",
-        "File": "testFile2.txt"
-    },
-    {
-        "Path": "D://ProjectFolder/Go/src/blackHatGo/newDir2",
-        "File": "testFile2.txt"
-    }
-]
+[{"Path":"./newDir1","File":"testFile1.txt"}]

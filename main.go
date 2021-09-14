@@ -34,7 +34,7 @@ func main() {
 
 	//********************* Tree implementation ****************//
 	folderList := new(FolderTree)
-	folderList.readDirT(Root)
+	folderList.readDrive(Root)
 	folderList.writeToFileJson("files.json")
 	fmt.Println("Folders: ", folderList.FolderNum, "Files: ", len(folderList.Folders))
 	// *********************************************************//

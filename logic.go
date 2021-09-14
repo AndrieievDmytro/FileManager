@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"os"
@@ -57,56 +58,60 @@ func (trS *FolderTree) setVal(fldName string, file string) {
 	trS.Mute.Unlock()
 }
 
-func (trS *FolderTree) readDirT(folderName string) {
+func (trS *FolderTree) readDir(folderName string, file fs.FileInfo, wg *sync.WaitGroup) {
+	atomic.AddInt64(&trS.FolderNum, 1)
+	if atomic.LoadInt64(&trS.GoRtNum) < 128 {
+		atomic.AddInt64(&trS.GoRtNum, 1)
+		wg.Add(1)
+		go func(dir string) {
+			defer wg.Done()
+			defer atomic.AddInt64(&trS.GoRtNum, -1)
+			trS.readDrive(folderName + "/" + dir)
+		}(file.Name())
+	} else {
+		trS.readDrive(folderName + "/" + file.Name())
+	}
+
+}
+
+func (trS *FolderTree) readDrive(folderName string) {
 	wg := &sync.WaitGroup{}
 	files, err := ioutil.ReadDir(folderName)
 	if errCheck(err) {
-		for _, file := range files {
-			if file.IsDir() {
-				if len(Dir) < 1 {
-					atomic.AddInt64(&trS.FolderNum, 1)
-					if atomic.LoadInt64(&trS.GoRtNum) < 128 {
-						atomic.AddInt64(&trS.GoRtNum, 1)
-						wg.Add(1)
-						go func(dir string) {
-							defer wg.Done()
-							defer atomic.AddInt64(&trS.GoRtNum, -1)
-							trS.readDirT(folderName + "/" + dir)
-						}(file.Name())
-					} else {
-						trS.readDirT(folderName + "/" + file.Name())
-					}
+		if len(Dir) < 1 {
+			for _, file := range files {
+				if file.IsDir() {
+					trS.readDir(folderName, file, wg)
 				} else {
-					path := folderName + "/" + file.Name()
-					contains := strings.ContainsAny(path, Dir)
-					if contains {
-						atomic.AddInt64(&trS.FolderNum, 1)
-						if atomic.LoadInt64(&trS.GoRtNum) < 128 {
-							atomic.AddInt64(&trS.GoRtNum, 1)
-							wg.Add(1)
-							go func(dir string) {
-								defer wg.Done()
-								defer atomic.AddInt64(&trS.GoRtNum, -1)
-								trS.readDirT(path)
-							}(file.Name())
-						} else {
-							trS.readDirT(path)
+					if len(File) < 1 {
+						trS.setVal(folderName, file.Name())
+					} else {
+						contains := strings.Contains(file.Name(), File)
+						if contains {
+							trS.setVal(folderName, file.Name())
 						}
 					}
 				}
-			} else {
-				if len(File) < 1 {
-					trS.setVal(folderName, file.Name())
+			}
+		} else {
+			for _, file := range files {
+				containsDir := strings.Contains(folderName, Dir)
+				if file.IsDir() {
+					trS.readDir(folderName, file, wg)
 				} else {
-					contains := strings.Contains(file.Name(), File)
-					if contains {
+					if len(File) < 1 && containsDir {
 						trS.setVal(folderName, file.Name())
+					} else {
+						containsFile := strings.Contains(file.Name(), File)
+						if containsFile && containsDir {
+							trS.setVal(folderName, file.Name())
+						}
 					}
 				}
 			}
 		}
+		wg.Wait()
 	}
-	wg.Wait()
 }
 
 //************************ Map implementation ************************//
